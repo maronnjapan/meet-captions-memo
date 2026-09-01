@@ -11,6 +11,36 @@
     <div id="status" class="status">状態を確認中…</div>
   </header>
 
+  <details id="syncSettings" class="sync-settings">
+    <summary>review-markdown連携</summary>
+    <p class="sync-settings__hint">
+      発言を記録するたびに、review-markdown-cliが開いているMarkdownファイルへも書き足します。
+      サーバー起動時のログに出る「live captions token」と、そのURL・ファイルのパスを入力してください。
+    </p>
+    <form id="syncForm">
+      <label class="sync-settings__row">
+        <input type="checkbox" id="syncEnabled" />
+        連携を有効にする
+      </label>
+      <label class="sync-settings__field">
+        サーバーURL
+        <input type="text" id="syncServerUrl" placeholder="http://localhost:3000" />
+      </label>
+      <label class="sync-settings__field">
+        トークン
+        <input type="text" id="syncToken" placeholder="live captions token" autocomplete="off" />
+      </label>
+      <label class="sync-settings__field">
+        書き込み先ファイル（レビュー対象ディレクトリからの相対パス）
+        <input type="text" id="syncPath" placeholder="meeting-notes/today.md" />
+      </label>
+      <div class="sync-settings__actions">
+        <button type="submit" class="btn">保存</button>
+        <span id="syncSaved" class="sync-settings__saved" hidden>保存しました</span>
+      </div>
+    </form>
+  </details>
+
   <section id="memoList" class="memo-list">
     <p class="empty">読み込み中…</p>
   </section>

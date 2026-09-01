@@ -1,5 +1,6 @@
 const INDEX_KEY = 'meetCaptionsMemo_index';
 const MEMO_KEY_PREFIX = 'meetCaptionsMemo_memo_';
+const SYNC_SETTINGS_KEY = 'meetCaptionsMemo_liveSync';
 
 function storageGet(keys) {
   return new Promise((resolve) => chrome.storage.local.get(keys, resolve));
@@ -139,5 +140,32 @@ async function loadMemoList() {
   }
 }
 
+async function loadSyncSettings() {
+  const { [SYNC_SETTINGS_KEY]: sync = {} } = await storageGet(SYNC_SETTINGS_KEY);
+  document.getElementById('syncEnabled').checked = sync.enabled === true;
+  document.getElementById('syncServerUrl').value = sync.serverUrl || '';
+  document.getElementById('syncToken').value = sync.token || '';
+  document.getElementById('syncPath').value = sync.path || '';
+}
+
+function bindSyncSettingsForm() {
+  const form = document.getElementById('syncForm');
+  const savedLabel = document.getElementById('syncSaved');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const sync = {
+      enabled: document.getElementById('syncEnabled').checked,
+      serverUrl: document.getElementById('syncServerUrl').value.trim().replace(/\/+$/, ''),
+      token: document.getElementById('syncToken').value.trim(),
+      path: document.getElementById('syncPath').value.trim()
+    };
+    await storageSet({ [SYNC_SETTINGS_KEY]: sync });
+    savedLabel.hidden = false;
+    setTimeout(() => (savedLabel.hidden = true), 1500);
+  });
+}
+
 loadStatus();
 loadMemoList();
+loadSyncSettings();
+bindSyncSettingsForm();

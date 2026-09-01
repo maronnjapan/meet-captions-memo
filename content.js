@@ -15,6 +15,9 @@
   const INDEX_KEY = 'meetCaptionsMemo_index';
   const MEMO_KEY_PREFIX = 'meetCaptionsMemo_memo_';
   const SETTINGS_KEY = 'meetCaptionsMemo_settings';
+  // review-markdown-cli(ローカルCLI)と連携するときの設定。ポップアップから保存する。
+  const SYNC_SETTINGS_KEY = 'meetCaptionsMemo_liveSync';
+  const SYNC_TOKEN_HEADER = 'X-Review-Markdown-Live-Captions-Token';
 
   const POLL_INTERVAL_MS = 400;
   const STABLE_MS = 1300; // この時間だけテキストが変化しなければ「確定」として記録する
@@ -24,6 +27,8 @@
   const activeEntries = new Map();
   let recording = true;
   let badgeEl = null;
+  let syncSettings = null; // 未読み込みの間はnull。読み込み後は { enabled, serverUrl, token, path }
+  let lastSyncFailed = false;
 
   // ---------- ストレージ ----------
 
@@ -143,7 +148,8 @@
     const last = memo.lines[memo.lines.length - 1];
     if (last && last.speaker === speaker && last.text === text) return; // 重複防止
 
-    memo.lines.push({ speaker, text, time: nowTimeLabel() });
+    const time = nowTimeLabel();
+    memo.lines.push({ speaker, text, time });
     memo.updatedAt = new Date().toISOString();
     await storageSet({ [key]: memo });
 
@@ -155,6 +161,39 @@
       await storageSet({ [INDEX_KEY]: index });
     }
     updateBadge(memo.lines.length);
+    syncLineToReviewMarkdown(memo, { speaker, text, time });
+  }
+
+  // ---------- review-markdown-cliへのリアルタイム連携 ----------
+  // 外部サーバーへの送信は既定では行わない（README参照）。ポップアップで明示的に
+  // 有効化し、サーバーURL・トークン・書き込み先パスを設定した場合だけ、確定した
+  // 発言を1行ずつローカルのreview-markdown-cliサーバーへ送る。失敗しても記録
+  // そのもの（chrome.storage.localへの保存）は止めない。
+
+  async function syncLineToReviewMarkdown(memo, { speaker, text, time }) {
+    if (!syncSettings || !syncSettings.enabled) return;
+    const { serverUrl, token, path: targetPath } = syncSettings;
+    if (!serverUrl || !token || !targetPath) return;
+
+    try {
+      const response = await fetch(`${serverUrl}/api/live-captions/append`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', [SYNC_TOKEN_HEADER]: token },
+        body: JSON.stringify({
+          path: targetPath,
+          speaker,
+          text,
+          time,
+          title: memo.title,
+          meetingCode: memo.meetingCode,
+          startedAt: memo.startedAt
+        })
+      });
+      lastSyncFailed = !response.ok;
+    } catch {
+      lastSyncFailed = true;
+    }
+    updateBadge();
   }
 
   async function flushActive() {
@@ -239,8 +278,9 @@
   function updateBadge(lineCount) {
     if (!badgeEl) return;
     const count = typeof lineCount === 'number' ? lineCount : activeEntries.size;
+    const syncSuffix = syncSettings?.enabled ? (lastSyncFailed ? ' ・連携エラー' : ' ・連携中') : '';
     badgeEl.textContent = recording
-      ? `字幕メモ: 記録中 (${count}行)`
+      ? `字幕メモ: 記録中 (${count}行)${syncSuffix}`
       : '字幕メモ: 一時停止中(クリックで再開)';
   }
 
@@ -255,13 +295,23 @@
   // ---------- 初期化 ----------
 
   async function init() {
-    const { [SETTINGS_KEY]: settings } = await storageGet(SETTINGS_KEY);
+    const { [SETTINGS_KEY]: settings, [SYNC_SETTINGS_KEY]: sync } = await storageGet([
+      SETTINGS_KEY,
+      SYNC_SETTINGS_KEY
+    ]);
     if (settings && typeof settings.recording === 'boolean') {
       recording = settings.recording;
     }
+    syncSettings = sync || null;
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === 'local' && changes[SETTINGS_KEY]) {
+      if (area !== 'local') return;
+      if (changes[SETTINGS_KEY]) {
         recording = changes[SETTINGS_KEY].newValue?.recording ?? true;
+        updateBadge();
+      }
+      if (changes[SYNC_SETTINGS_KEY]) {
+        syncSettings = changes[SYNC_SETTINGS_KEY].newValue || null;
+        lastSyncFailed = false;
         updateBadge();
       }
     });

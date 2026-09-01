@@ -48,6 +48,55 @@ h1 { font-size: 14px; margin: 0 0 4px; font-weight: 700; }
 }
 .btn:hover { background: #f0f0f0; }
 
+.sync-settings {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 10px;
+}
+.sync-settings summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.sync-settings__hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 6px 0;
+}
+.sync-settings__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.sync-settings__field {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.sync-settings__field input[type="text"] {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+.sync-settings__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sync-settings__saved {
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .memo-item__body {
   white-space: pre-wrap;
   word-break: break-word;
