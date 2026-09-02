@@ -276,6 +276,20 @@
     }
   }
 
+  // setIntervalでasync関数を直接呼ぶと、ストレージへの保存が400ms以上
+  // かかった場合に次のtickが並行して走り、同じメモを読み書きして字幕を
+  // 上書きする可能性がある。前回の処理が終わってから次回を予約し、
+  // 字幕の解析と保存を常に直列に実行する。
+  async function pollCaptions() {
+    try {
+      await tick();
+    } catch (error) {
+      console.error('字幕メモの取得中にエラーが発生しました', error);
+    } finally {
+      setTimeout(pollCaptions, POLL_INTERVAL_MS);
+    }
+  }
+
   // ---------- 画面上のバッジ(状態表示・一時停止トグル) ----------
   // 自分の画面にだけ表示され、他の参加者には見えない。
 
@@ -335,7 +349,7 @@
       }
     });
     createBadge();
-    setInterval(tick, POLL_INTERVAL_MS);
+    pollCaptions();
     window.addEventListener('pagehide', () => {
       flushActive();
     });
